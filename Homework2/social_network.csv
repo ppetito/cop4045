@@ -1,0 +1,6 @@
+alice,Alice Smith,maria
+maria,Maria Cortez,alice;joe;david
+joe,Joseph Adams,maria;eve
+eve,Evelyn Cooper,joe;frank
+david,David Benson,maria
+frank,Frank Ortiz,eve

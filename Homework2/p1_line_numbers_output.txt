@@ -1,0 +1,78 @@
+1. import ast
+2. import io
+3. import tokenize
+4. from typing import Tuple
+5. 
+6. 
+7. def line_number(source_filename: str, target_filename: str) -> None:
+8.     """Write each line of source_filename to target_filename, prefixed with its line number"""
+9.     try:
+10.         with open(source_filename, 'r') as infile:
+11.             lines = infile.readlines()
+12.         with open(target_filename, 'w') as outfile:
+13.             for i, line in enumerate(lines, start=1):
+14.                 outfile.write(f"{i}. {line}")
+15.                 if not line.endswith('\n'):
+16.                     outfile.write('\n')
+17.     except Exception as error:
+18.         print(f"Error numbering lines from '{source_filename}' to '{target_filename}': {error}")
+19.         raise
+20. 
+21. 
+22. def _strip_comments_and_blanks(code: str) -> str:
+23.     lines = code.split('\n')
+24.     try:
+25.         for tok in tokenize.generate_tokens(io.StringIO(code).readline):
+26.             if tok.type == tokenize.COMMENT:
+27.                 row, col = tok.start
+28.                 lines[row - 1] = lines[row - 1][:col].rstrip()
+29.     except tokenize.TokenizeError:
+30.         pass
+31.     lines = [ln for ln in lines if ln.strip()]
+32.     return '\n'.join(lines) + '\n' if lines else ''
+33. 
+34. 
+35. def _args_string(node: ast.FunctionDef) -> str:
+36.     a = node.args
+37.     parts = [x.arg for x in getattr(a, 'posonlyargs', [])] + [x.arg for x in a.args]
+38.     if a.vararg:
+39.         parts.append('*' + a.vararg.arg)
+40.     parts += [x.arg for x in a.kwonlyargs]
+41.     if a.kwarg:
+42.         parts.append('**' + a.kwarg.arg)
+43.     return ', '.join(parts)
+44. 
+45. 
+46. def parse_functions(filename: str) -> Tuple[Tuple[int, str, str, str], ...]:
+47.     """Return (line_no, name, args, code) for each top level function in filename, sorted by name."""
+48.     try:
+49.         with open(filename, 'r') as f:
+50.             source = f.read()
+51.         tree = ast.parse(source, filename=filename)
+52.         src_lines = source.split('\n')
+53.         functions = []
+54.         for node in tree.body:
+55.             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+56.                 end = getattr(node, 'end_lineno', node.lineno)
+57.                 raw = '\n'.join(src_lines[node.lineno - 1:end]) + '\n'
+58.                 functions.append((node.lineno, node.name, _args_string(node), _strip_comments_and_blanks(raw)))
+59.         functions.sort(key=lambda t: t[1])
+60.         return tuple(functions)
+61.     except Exception as error:
+62.         print(f"Error parsing '{filename}': {error}")
+63.         raise
+64. 
+65. 
+66. def main() -> None:
+67.     this_file = __file__
+68.     out_file = "p1_line_numbers_output.txt"
+69.     line_number(this_file, out_file)
+70.     print(f"Part a): numbered lines written to '{out_file}'.\n")
+71. 
+72.     print("Part b): functions (sorted alphabetically by name):")
+73.     for func in parse_functions(this_file):
+74.         print(func)
+75. 
+76. 
+77. if __name__ == "__main__":
+78.     main()
